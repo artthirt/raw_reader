@@ -341,27 +341,27 @@ void RawReader::demoscaling_linear()
 		for(int j = 1; j < m_width - 2; j+= 2){
 			int g00 = 0, g01 = 0, g10 = 0, g11 = 0;
 
-			g00 += dm1[j - 1];
+			g00 = dm1[j - 1];
 			g00 += dm1[j + 1];
 			g00 += d0[j];
 			g00 += dp1[j - 1];
 			g00 += dp1[j + 1];
 			g00 /= 5;
 
-			g11 += d0[j];
+			g11 = d0[j];
 			g11 += d0[j + 2];
 			g11 += dm1[j + 1];
 			g11 += dp2[j];
 			g11 += dp2[j + 2];
 			g11 /= 5;
 
-			g01 += dm1[j + 1];
+			g01 = dm1[j + 1];
 			g01 += d0[j];
 			g01 += d0[j + 2];
 			g01 += dp1[j + 1];
 			g01 >>= 2;
 
-			g10 += d0[j];
+			g10 = d0[j];
 			g10 += dp1[j - 1];
 			g10 += dp1[j + 1];
 			g10 += dp2[j];
@@ -379,6 +379,58 @@ void RawReader::demoscaling_linear()
 		}
 	}
 
+	/// edge green
+	{
+		QRgb* sl0 = reinterpret_cast< QRgb* >(m_image.scanLine(0));
+		QRgb* sl1 = reinterpret_cast< QRgb* >(m_image.scanLine(1));
+		QRgb* slu0 = reinterpret_cast< QRgb* >(m_image.scanLine(m_height - 1));
+		ushort* d0 = m_tmp.at(0);
+		ushort* dp1 = m_tmp.at(1);
+		ushort* dp2 = m_tmp.at(2);
+
+		ushort* du0 = m_tmp.at(m_height - 1);
+		ushort* dup1 = m_tmp.at(m_height - 2);
+		for(int j = 1; j < m_width - 2; j+= 2){
+			int g00 = 0, g01 = 0, r00, r01, r10, r11, b00, b01, b10, b11;
+			/// green
+			g00 = (d0[j-1] + d0[j + 1] + dp1[j])/ 3;
+			g01 = (d0[j + 1] + dp1[j] + dp1[j + 2]) / 3;
+			g00 = minFast(g00 >> m_shift, 255);	g01 = minFast(g01 >> m_shift, 255);
+			/// red
+			r00 = d0[j];
+			r01 = (d0[j] + d0[j + 2]) >> 1;
+			r00 = minFast(r00 >> m_shift, 255);	r01 = minFast(r01 >> m_shift, 255);
+			/// blue
+			b00 = (dp1[j - 1] + dp1[j + 1]) >> 1;
+			b01 = dp1[j + 1];
+			b00 = minFast(b00 >> m_shift, 255);	b01 = minFast(b01 >> m_shift, 255);
+
+			sl0[j]		= (b00) | (g00 << 8) | (r00 << 16) | 0xff000000;
+			sl0[j + 1]	= (b01) | (g01 << 8) | (r01 << 16) | 0xff000000;
+
+			//////////////////////////////////
+			r10 = (d0[j] + dp2[j]) >> 1;
+			r11 = (d0[j] + d0[j + 2] + dp2[j] + dp2[j + 2]) >> 2;
+
+			b10 = (dp1[j - 1] + dp1[j + 1]) >> 1;
+			b11 = dp1[j + 1];
+
+			r10 = minFast(r10 >> m_shift, 255);	r11 = minFast(r11 >> m_shift, 255);
+			b10 = minFast(b10 >> m_shift, 255);	b11 = minFast(b11 >> m_shift, 255);
+
+			sl1[j] |= (b10) | (r10 << 16);
+			sl1[j + 1] |= (b11) | (r11 << 16);
+			//////////////////////////////////
+
+			g00 = (du0[j-1] + du0[j + 1] + dup1[j])/3;
+			g01 = (du0[j] + dup1[j - 1] + dup1[j + 1])/ 3;
+			g00 = minFast(g00 >> m_shift, 255);	g01 = minFast(g01 >> m_shift, 255);
+
+			slu0[j]		= (g00 << 8) | 0xff000000;
+			slu0[j + 1]	= (g01 << 8) | 0xff000000;
+		}
+	}
+
 #if 1
 	/// red & blue
 	for(int i = 1; i < m_height/2 - 1; ++i){
@@ -386,10 +438,10 @@ void RawReader::demoscaling_linear()
 		ushort *d2 = m_tmp.at((i << 1) + 1);
 		for(int j = 1; j < m_width/2 - 1; ++j){
 			int red = 0, blue = 0;
-			red += d1[(j << 1) - 1];
+			red = d1[(j << 1) - 1];
 			red += d1[(j << 1) + 1];
 			red >>= 1;
-			blue += d2[(j << 1)];
+			blue = d2[(j << 1)];
 			blue += d2[(j << 1) - 2];
 			blue >>= 1;
 			d1[(j << 1)] = red;
@@ -413,7 +465,7 @@ void RawReader::demoscaling_linear()
 			red >>= m_shift;
 			red = minFast(255, red);
 
-			blue += dm1[j];
+			blue = dm1[j];
 			blue += dp1[j];
 			blue >>= 1;
 			blue >>= m_shift;
@@ -422,13 +474,12 @@ void RawReader::demoscaling_linear()
 			sl0[j] = qRgb(red, green, blue);
 
 			green = (sl1[j] >> 8) & 0xFF;
-			red = 0;
-			red += d0[j];
+			red = d0[j];
 			red += dp2[j];
 			red >>= 1;
 			red >>= m_shift;
 			red = minFast(255, red);
-			blue = 0;
+
 			blue = dp1[j];
 			blue >>= m_shift;
 			blue = minFast(255, blue);
