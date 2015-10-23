@@ -438,7 +438,7 @@ void RawReader::demoscaling_linear()
 			red = d0[j];
 			red = minFast(255, red >> m_shift);
 
-			blue = (dm1[j] + dp1[j]) >> 1;	;
+			blue = (dm1[j] + dp1[j]) >> 1;
 			blue = minFast(255, blue >> m_shift);
 
 			sl0[j] |= (red << 16) | (blue);
