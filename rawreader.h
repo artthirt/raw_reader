@@ -107,6 +107,8 @@ public:
 	 * @param shift
 	 */
 	void set_shift(int shift);
+	void set_lshift(int value);
+	int lshift() const;
 	/**
 	 * @brief set_demoscaling
 	 * тип дебаеризации
@@ -141,8 +143,10 @@ private:
 	bool m_work;
 
 	Mat< ushort > m_bayer;
+	Mat< ushort > m_initial;
 	Mat< ushort > m_tmp;
 
+	int m_lshift;
 	int m_shift;
 	int m_width;
 	int m_height;
@@ -175,6 +179,11 @@ private:
 	 * дебаеризация по билинейному алгоритму
 	 */
 	void demoscaling_linear();
+
+	bool open_raw(const QString fileName);
+	bool open_image(const QString fileName);
+
+	void left_shift();
 };
 
 #endif // RAWREADER_H

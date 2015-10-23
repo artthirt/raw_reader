@@ -29,6 +29,7 @@ MainWindow::MainWindow(QWidget *parent) :
 	m_rawReader->start();
 
 	ui->spinBox->setValue(m_rawReader->shift());
+	ui->sb_lshift->setValue(m_rawReader->lshift());
 
 	connect(&m_timer, SIGNAL(timeout()), this, SLOT(on_timeout()));
 	m_timer.setInterval(300);
@@ -161,6 +162,15 @@ void MainWindow::open_file(const QString &fileName)
 
 		setWindowTitle(window_title + " [" + m_fileName + "]");
 
+		m_timer.start();
+		ui->lb_work->setVisible(true);
+	}
+}
+
+void MainWindow::on_sb_lshift_valueChanged(int arg1)
+{
+	if(m_rawReader){
+		m_rawReader->set_lshift(arg1);
 		m_timer.start();
 		ui->lb_work->setVisible(true);
 	}

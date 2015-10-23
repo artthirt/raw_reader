@@ -98,13 +98,27 @@
        <item>
         <widget class="QSpinBox" name="spinBox">
          <property name="minimum">
-          <number>1</number>
+          <number>0</number>
          </property>
          <property name="maximum">
           <number>32</number>
          </property>
          <property name="value">
           <number>4</number>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="label_4">
+         <property name="text">
+          <string>left shift</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QSpinBox" name="sb_lshift">
+         <property name="maximum">
+          <number>32</number>
          </property>
         </widget>
        </item>

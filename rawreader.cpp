@@ -1,6 +1,7 @@
 #include "rawreader.h"
 
 #include <QFile>
+#include <QRegExp>
 
 /////////////////////////////////
 
@@ -22,6 +23,7 @@ RawReader::RawReader()
 	, m_width(0)
 	, m_height(0)
 	, m_shift(4)
+	, m_lshift(0)
 	, m_work(false)
 	, m_demoscaling(GRAY)
 {
@@ -73,6 +75,17 @@ void RawReader::set_shift(int shift)
 	m_start = true;
 }
 
+void RawReader::set_lshift(int value)
+{
+	m_lshift = value;
+	m_start = true;
+}
+
+int RawReader::lshift() const
+{
+	return m_lshift;
+}
+
 void RawReader::set_demoscaling(TYPE_DEMOSCALE value)
 {
 	m_demoscaling = value;
@@ -117,39 +130,96 @@ void RawReader::run()
 	}
 }
 
+bool RawReader::open_raw(const QString fileName)
+{
+	if(!fileName.contains(QRegExp("\.raw$|\.bin$", Qt::CaseInsensitive)))
+		return false;
+
+	QFile fl(fileName);
+
+	QByteArray data;
+
+	if(fl.open(QIODevice::ReadOnly)){
+		data = fl.readAll();
+		fl.close();
+
+		QDataStream stream(data);
+		stream.setByteOrder(QDataStream::LittleEndian);
+
+		stream >> m_width;
+		stream >> m_height;
+
+		m_bayer = Mat< ushort >(m_height, m_width);
+		m_tmp = Mat< ushort >(m_height, m_width);
+
+		for(int i = 0; i < m_height; i++){
+			for(int j = 0; j < m_width; j++){
+				uchar ch1, ch2;
+				stream >> ch1 >> ch2;
+				ushort val = (ch1) | (ch2 << 8);
+				m_bayer.at(i, j) = val;
+			}
+		}
+
+		m_initial = m_bayer;
+		return true;
+	}
+	return false;
+}
+
+bool RawReader::open_image(const QString fileName)
+{
+	if(!fileName.contains(QRegExp("\.jpeg$|\.jpg$|\.bmp$|\.png", Qt::CaseInsensitive)))
+		return false;
+
+	QImage image;
+	image.load(fileName);
+
+	m_width = image.width();
+	m_height = image.height();
+
+	m_bayer = Mat< ushort >(m_height, m_width);
+	m_tmp = Mat< ushort >(m_height, m_width);
+
+	for(int i = 0; i < m_height; i++){
+		QRgb* sl = reinterpret_cast< QRgb* >(image.scanLine(i));
+		ushort *d = m_bayer.at(i);
+		for(int j = 0; j < m_width; j++){
+			d[j] = (sl[j] & 0xff);
+		}
+	}
+	m_initial = m_bayer;
+
+	return true;
+}
+
+void RawReader::left_shift()
+{
+	for(int i = 0; i < m_height; i++){
+		ushort *d = m_bayer.at(i);
+		ushort *din = m_initial.at(i);
+		for(int j = 0; j < m_width; j++){
+			d[j] = din[j] << m_lshift;
+		}
+	}
+}
+
 void RawReader::work()
 {
 	m_made = false;
 	m_work = true;
 
 	if(m_bayer.empty()){
-		QFile fl(m_fileName);
-
-		QByteArray data;
-
-		if(fl.open(QIODevice::ReadOnly)){
-			data = fl.readAll();
-			fl.close();
-
-			QDataStream stream(data);
-			stream.setByteOrder(QDataStream::LittleEndian);
-
-			stream >> m_width;
-			stream >> m_height;
-
-			m_bayer = Mat< ushort >(m_height, m_width);
-			m_tmp = Mat< ushort >(m_height, m_width);
-
-			for(int i = 0; i < m_height; i++){
-				for(int j = 0; j < m_width; j++){
-					uchar ch1, ch2;
-					stream >> ch1 >> ch2;
-					ushort val = (ch1) | (ch2 << 8);
-					m_bayer.at(i, j) = val;
-				}
+		if(!open_image(m_fileName)){
+			if(!open_raw(m_fileName)){
+				m_work = false;
+				m_made = true;
+				return;
 			}
 		}
 	}
+
+	left_shift();
 
 	m_time_counter.start();
 	int t1 = m_time_counter.elapsed();

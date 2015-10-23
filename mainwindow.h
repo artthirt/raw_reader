@@ -34,6 +34,8 @@ private slots:
 
 	void on_cb_demoscale_currentIndexChanged(int index);
 
+	void on_sb_lshift_valueChanged(int arg1);
+
 private:
 	Ui::MainWindow *ui;
 	QTimer m_timer;
