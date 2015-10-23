@@ -358,7 +358,7 @@ void RawReader::demoscaling_linear()
 		}
 	}
 
-	/// edge green
+	/// edge green red blue
 	{
 		QRgb* sl0 = reinterpret_cast< QRgb* >(m_image.scanLine(0));				// up image, 0 row
 		QRgb* sl1 = reinterpret_cast< QRgb* >(m_image.scanLine(1));				// up image, 1 row

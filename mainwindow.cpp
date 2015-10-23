@@ -5,8 +5,12 @@
 #include <QFile>
 #include <QDebug>
 #include <QDataStream>
+#include <QDomDocument>
+#include <QDomNodeList>
 
 #include <QFileDialog>
+
+const QString window_title = "RawReader";
 
 //////////////////////////////////////////////
 /// \brief MainWindow::MainWindow
@@ -28,10 +32,16 @@ MainWindow::MainWindow(QWidget *parent) :
 
 	connect(&m_timer, SIGNAL(timeout()), this, SLOT(on_timeout()));
 	m_timer.setInterval(300);
+
+	loadXml();
 }
 
 MainWindow::~MainWindow()
 {
+	saveXml();
+
+	delete m_rawReader;
+
 	delete ui;
 }
 
@@ -40,9 +50,7 @@ void MainWindow::on_actionOpen_triggered()
 	QFileDialog dlg;
 
 	if(dlg.exec()){
-		m_rawReader->start_read_file(dlg.selectedFiles()[0]);
-		m_timer.start();
-		ui->lb_work->setVisible(true);
+		open_file(dlg.selectedFiles()[0]);
 	}
 }
 
@@ -97,4 +105,63 @@ void MainWindow::on_cb_demoscale_currentIndexChanged(int index)
 	}
 	m_timer.start();
 	ui->lb_work->setVisible(true);
+}
+
+const QString xml_config("config.xml");
+
+void MainWindow::loadXml()
+{
+	if(!QFile::exists(xml_config))
+		return;
+
+	QFile file(xml_config);
+
+	if(!file.open(QIODevice::ReadOnly)){
+		return;
+	}
+	QDomDocument dom;
+
+	QByteArray data = file.readAll();
+	dom.setContent(data);
+
+	QDomNodeList list = dom.elementsByTagName("filename");
+	if(list.size()){
+		open_file(list.item(0).firstChild().toText().data());
+	}
+}
+
+void MainWindow::saveXml()
+{
+	QDomDocument dom;
+	QDomProcessingInstruction pr = dom.createProcessingInstruction("xml version=\"1.0\"", "encoding=\"utf-8\"");
+
+	dom.appendChild(pr);
+
+	QDomNode tree = dom.createElement("tree");
+	dom.appendChild(tree);
+
+	QDomNode node = dom.createElement("filename");
+	tree.appendChild(node);
+
+	QDomText text = dom.createTextNode(m_fileName);
+	node.appendChild(text);
+
+	QByteArray data = dom.toByteArray();
+	QFile file(xml_config);
+	if(file.open(QIODevice::WriteOnly)){
+		file.write(data);
+		file.close();
+	}
+}
+
+void MainWindow::open_file(const QString &fileName)
+{
+	if(m_rawReader->start_read_file(fileName)){
+		m_fileName = fileName;
+
+		setWindowTitle(window_title + " [" + m_fileName + "]");
+
+		m_timer.start();
+		ui->lb_work->setVisible(true);
+	}
 }

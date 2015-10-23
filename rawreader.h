@@ -81,20 +81,53 @@ public:
 	};
 	RawReader();
 	~RawReader();
-
+	/**
+	 * @brief start_read_file
+	 * открыть файл
+	 * @param fn
+	 * @return
+	 */
 	bool start_read_file(const QString& fn);
+	/**
+	 * @brief is_made
+	 * готово или нет
+	 * @return
+	 */
 	bool is_made() const;
+	/**
+	 * @brief is_work
+	 * в работе
+	 * @return
+	 */
 	bool is_work() const;
 
+	/**
+	 * @brief set_shift
+	 * число бит для сдвига значения пикселя
+	 * @param shift
+	 */
 	void set_shift(int shift);
+	/**
+	 * @brief set_demoscaling
+	 * тип дебаеризации
+	 * @param value
+	 */
 	void set_demoscaling(TYPE_DEMOSCALE value);
 
 	int width() const;
 	int height() const;
 	const QImage &image() const;
-
+	/**
+	 * @brief time_exec
+	 * время выполнения
+	 * @return
+	 */
 	int time_exec() const;
-
+	/**
+	 * @brief shift
+	 * текщий сдвиг значения пикселя
+	 * @return
+	 */
 	int shift() const;
 
 protected:
@@ -118,15 +151,29 @@ private:
 	int m_time_exec;
 
 	TYPE_DEMOSCALE m_demoscaling;
-
+	/**
+	 * @brief create_image
+	 * серое изображение
+	 */
 	void create_image();
+	/**
+	 * @brief work
+	 * открыть файл и преобразовать в изображения
+	 */
 	void work();
+	/**
+	 * @brief demoscaling
+	 * дебаеризация медленная (хз какой алгоритм)
+	 */
 	void demoscaling();
 
 	inline int getred(int i, int j);
 	inline int getblue(int i, int j);
 	inline int getgreen(int i, int j);
-
+	/**
+	 * @brief demoscaling_linear
+	 * дебаеризация по билинейному алгоритму
+	 */
 	void demoscaling_linear();
 };
 

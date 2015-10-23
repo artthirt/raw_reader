@@ -37,8 +37,14 @@ private slots:
 private:
 	Ui::MainWindow *ui;
 	QTimer m_timer;
+	QString m_fileName;
 
 	RawReader* m_rawReader;
+
+	void loadXml();
+	void saveXml();
+
+	void open_file(const QString& fileName);
 };
 
 #endif // MAINWINDOW_H
