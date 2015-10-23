@@ -363,12 +363,12 @@ void RawReader::demoscaling_linear()
 		QRgb* sl0 = reinterpret_cast< QRgb* >(m_image.scanLine(0));				// up image, 0 row
 		QRgb* sl1 = reinterpret_cast< QRgb* >(m_image.scanLine(1));				// up image, 1 row
 		QRgb* slu0 = reinterpret_cast< QRgb* >(m_image.scanLine(m_height - 1));	// down image
-		ushort* d0 = m_tmp.at(0);			//up bayer, 0 row
-		ushort* dp1 = m_tmp.at(1);			//up bayer, 1 row
-		ushort* dp2 = m_tmp.at(2);			//up bayer, 2 row
+		ushort* d0 = m_tmp.at(0);			// bayer, 0 row
+		ushort* dp1 = m_tmp.at(1);			// bayer, 1 row
+		ushort* dp2 = m_tmp.at(2);			// bayer, 2 row
 
-		ushort* du0 = m_tmp.at(m_height - 1);		// down bayer, -1 row
-		ushort* dup1 = m_tmp.at(m_height - 2);		// down bayer, -2 row
+		ushort* du0 = m_tmp.at(m_height - 1);		// bayer, height-1 row
+		ushort* dup1 = m_tmp.at(m_height - 2);		// bayer, height-2 row
 		for(int j = 1; j < m_width - 2; j+= 2){
 			int g00 = 0, g01 = 0, r00, r01, r10, r11, b00, b01, b10, b11;
 			/// green
