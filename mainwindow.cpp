@@ -25,11 +25,11 @@ MainWindow::MainWindow(QWidget *parent) :
 
 	ui->lb_work->setVisible(false);
 
-	m_rawReader = new RawReader;
+	m_rawReader = new RawReaderWorker;
 	m_rawReader->start();
 
-	ui->spinBox->setValue(m_rawReader->shift());
-	ui->sb_lshift->setValue(m_rawReader->lshift());
+	ui->spinBox->setValue(m_rawReader->reader().shift());
+	ui->sb_lshift->setValue(m_rawReader->reader().lshift());
 
 	connect(&m_timer, SIGNAL(timeout()), this, SLOT(on_timeout()));
 	m_timer.setInterval(300);
@@ -65,7 +65,8 @@ void MainWindow::on_sb_width_valueChanged(int arg1)
 
 void MainWindow::on_spinBox_valueChanged(int arg1)
 {
-	m_rawReader->set_shift(arg1);
+	m_rawReader->reader().set_shift(arg1);
+	m_rawReader->start_compute();
 	m_timer.start();
 	ui->lb_work->setVisible(true);
 }
@@ -75,9 +76,9 @@ void MainWindow::on_timeout()
 	if(m_rawReader && m_rawReader->is_made()){
 		m_timer.stop();
 
-		ui->sb_width->setValue(m_rawReader->width());
-		ui->sb_height->setValue(m_rawReader->height());
-		ui->widget->setImage(m_rawReader->image());
+		ui->sb_width->setValue(m_rawReader->reader().width());
+		ui->sb_height->setValue(m_rawReader->reader().height());
+		ui->widget->setImage(m_rawReader->reader().image());
 		ui->lb_work->setVisible(false);
 
 		ui->lb_time_exec->setText(QString("time execute: %1 ms").arg(m_rawReader->time_exec()));
@@ -93,17 +94,18 @@ void MainWindow::on_cb_demoscale_currentIndexChanged(int index)
 {
 	switch (index) {
 		case 0:
-			m_rawReader->set_demoscaling(RawReader::GRAY);
+			m_rawReader->reader().set_demoscaling(RawReader::GRAY);
 			break;
 		case 1:
-			m_rawReader->set_demoscaling(RawReader::SIMPLE);
+			m_rawReader->reader().set_demoscaling(RawReader::SIMPLE);
 			break;
 		case 2:
-			m_rawReader->set_demoscaling(RawReader::LINEAR);
+			m_rawReader->reader().set_demoscaling(RawReader::LINEAR);
 			break;
 		default:
 			break;
 	}
+	m_rawReader->start_compute();
 	m_timer.start();
 	ui->lb_work->setVisible(true);
 }
@@ -170,7 +172,8 @@ void MainWindow::open_file(const QString &fileName)
 void MainWindow::on_sb_lshift_valueChanged(int arg1)
 {
 	if(m_rawReader){
-		m_rawReader->set_lshift(arg1);
+		m_rawReader->reader().set_lshift(arg1);
+		m_rawReader->start_compute();
 		m_timer.start();
 		ui->lb_work->setVisible(true);
 	}

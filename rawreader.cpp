@@ -16,54 +16,87 @@ inline int minFast(int a, int b)
 /////////////////////////////////
 
 RawReader::RawReader()
-	: QThread(0)
-	, m_made(false)
-	, m_start(false)
-	, m_done(false)
-	, m_width(0)
+	: m_width(0)
 	, m_height(0)
 	, m_shift(4)
 	, m_lshift(0)
-	, m_work(false)
 	, m_demoscaling(GRAY)
 {
 }
 
 RawReader::~RawReader()
 {
-	m_done = true;
-
-	quit();
-	wait();
 }
 
-bool RawReader::start_read_file(const QString &fn)
+bool RawReader::set_bayer_data(const QByteArray &data)
 {
-	if(!QFile::exists(fn))
+	if(data.isNull())
 		return false;
 
-	if(m_fileName == fn){
-		return true;
+	QDataStream stream(data);
+	stream.setByteOrder(QDataStream::LittleEndian);
+
+	stream >> m_width;
+	stream >> m_height;
+
+	if(!m_width || !m_height || qAbs(m_width) > 0xffffff || qAbs(m_height) > 0xffffff)
+		return false;
+
+	m_bayer = Mat< ushort >(m_height, m_width);
+	m_tmp = Mat< ushort >(m_height, m_width);
+
+	for(int i = 0; i < m_height; i++){
+		for(int j = 0; j < m_width; j++){
+			uchar ch1, ch2;
+			stream >> ch1 >> ch2;
+			ushort val = (ch1) | (ch2 << 8);
+			m_bayer.at(i, j) = val;
+		}
 	}
 
-	m_bayer.clear();
-	m_width = m_height = 0;
+	m_initial = m_bayer;
 
-	m_fileName = fn;
-
-	m_start = true;
+	left_shift();
 
 	return true;
 }
 
-bool RawReader::is_made() const
+bool RawReader::set_bayer_data(const QImage &image)
 {
-	return m_made;
+	if(image.isNull())
+		return false;
+
+	m_width = image.width();
+	m_height = image.height();
+
+	m_bayer = Mat< ushort >(m_height, m_width);
+	m_tmp = Mat< ushort >(m_height, m_width);
+
+	for(int i = 0; i < m_height; i++){
+		const QRgb* sl = reinterpret_cast< const QRgb* >(image.scanLine(i));
+		ushort *d = m_bayer.at(i);
+		for(int j = 0; j < m_width; j++){
+			d[j] = (sl[j] & 0xff);
+		}
+	}
+	m_initial = m_bayer;
+
+	left_shift();
+
+	return true;
 }
 
-bool RawReader::is_work() const
+void RawReader::clear_bayer()
 {
-	return m_work;
+	m_bayer.clear();
+	m_initial.clear();
+	m_tmp.clear();
+	m_width = m_height = 0;
+}
+
+bool RawReader::empty() const
+{
+	return m_bayer.empty();
 }
 
 void RawReader::set_shift(int shift)
@@ -71,14 +104,12 @@ void RawReader::set_shift(int shift)
 	if(shift <= 0)
 		return;
 	m_shift = shift;
-
-	m_start = true;
 }
 
 void RawReader::set_lshift(int value)
 {
 	m_lshift = value;
-	m_start = true;
+	left_shift();
 }
 
 int RawReader::lshift() const
@@ -89,8 +120,22 @@ int RawReader::lshift() const
 void RawReader::set_demoscaling(TYPE_DEMOSCALE value)
 {
 	m_demoscaling = value;
+}
 
-	m_start = true;
+void RawReader::compute()
+{
+	switch (m_demoscaling) {
+		default:
+		case GRAY:
+			create_image();
+			break;
+		case SIMPLE:
+			demoscaling();
+			break;
+		case LINEAR:
+			demoscaling_linear();
+			break;
+	}
 }
 
 int RawReader::width() const
@@ -108,89 +153,9 @@ const QImage &RawReader::image() const
 	return m_image;
 }
 
-int RawReader::time_exec() const
-{
-	return m_time_exec;
-}
-
 int RawReader::shift() const
 {
 	return m_shift;
-}
-
-void RawReader::run()
-{
-	while(!m_done){
-		if(!m_start){
-			usleep(300);
-		}else{
-			m_start = false;
-			work();
-		}
-	}
-}
-
-bool RawReader::open_raw(const QString fileName)
-{
-	if(!fileName.contains(QRegExp("\.raw$|\.bin$", Qt::CaseInsensitive)))
-		return false;
-
-	QFile fl(fileName);
-
-	QByteArray data;
-
-	if(fl.open(QIODevice::ReadOnly)){
-		data = fl.readAll();
-		fl.close();
-
-		QDataStream stream(data);
-		stream.setByteOrder(QDataStream::LittleEndian);
-
-		stream >> m_width;
-		stream >> m_height;
-
-		m_bayer = Mat< ushort >(m_height, m_width);
-		m_tmp = Mat< ushort >(m_height, m_width);
-
-		for(int i = 0; i < m_height; i++){
-			for(int j = 0; j < m_width; j++){
-				uchar ch1, ch2;
-				stream >> ch1 >> ch2;
-				ushort val = (ch1) | (ch2 << 8);
-				m_bayer.at(i, j) = val;
-			}
-		}
-
-		m_initial = m_bayer;
-		return true;
-	}
-	return false;
-}
-
-bool RawReader::open_image(const QString fileName)
-{
-	if(!fileName.contains(QRegExp("\.jpeg$|\.jpg$|\.bmp$|\.png", Qt::CaseInsensitive)))
-		return false;
-
-	QImage image;
-	image.load(fileName);
-
-	m_width = image.width();
-	m_height = image.height();
-
-	m_bayer = Mat< ushort >(m_height, m_width);
-	m_tmp = Mat< ushort >(m_height, m_width);
-
-	for(int i = 0; i < m_height; i++){
-		QRgb* sl = reinterpret_cast< QRgb* >(image.scanLine(i));
-		ushort *d = m_bayer.at(i);
-		for(int j = 0; j < m_width; j++){
-			d[j] = (sl[j] & 0xff);
-		}
-	}
-	m_initial = m_bayer;
-
-	return true;
 }
 
 void RawReader::left_shift()
@@ -202,44 +167,6 @@ void RawReader::left_shift()
 			d[j] = din[j] << m_lshift;
 		}
 	}
-}
-
-void RawReader::work()
-{
-	m_made = false;
-	m_work = true;
-
-	if(m_bayer.empty()){
-		if(!open_image(m_fileName)){
-			if(!open_raw(m_fileName)){
-				m_work = false;
-				m_made = true;
-				return;
-			}
-		}
-	}
-
-	left_shift();
-
-	m_time_counter.start();
-	int t1 = m_time_counter.elapsed();
-
-	switch (m_demoscaling) {
-		default:
-		case GRAY:
-			create_image();
-			break;
-		case SIMPLE:
-			demoscaling();
-			break;
-		case LINEAR:
-			demoscaling_linear();
-			break;
-	}
-
-	m_time_exec = m_time_counter.elapsed() - t1;
-
-	m_work = true;
 }
 
 void RawReader::demoscaling()
@@ -258,7 +185,6 @@ void RawReader::demoscaling()
 			sl[j] = qRgb(red, green, blue);
 		}
 	}
-	m_made = true;
 }
 
 int RawReader::getblue(int i, int j)
@@ -523,8 +449,6 @@ void RawReader::demoscaling_linear()
 		}
 	}
 #endif
-
-	m_made = true;
 }
 
 void RawReader::create_image()
@@ -543,6 +467,131 @@ void RawReader::create_image()
 			sl[j] = qRgb(val, val, val);
 		}
 	}
+}
+
+////////////////////////////////////////////////
+////////////////////////////////////////////////
+
+RawReaderWorker::RawReaderWorker()
+	: QThread(0)
+	, m_done(false)
+	, m_made(false)
+{
+
+}
+
+RawReaderWorker::~RawReaderWorker()
+{
+	m_done = true;
+
+	quit();
+	wait();
+}
+
+void RawReaderWorker::run()
+{
+	while(!m_done){
+		if(!m_start){
+			usleep(300);
+		}else{
+			m_start = false;
+			work();
+		}
+	}
+}
+
+
+bool RawReaderWorker::start_read_file(const QString &fn)
+{
+	if(!QFile::exists(fn))
+		return false;
+
+	if(m_fileName == fn){
+		return true;
+	}
+
+	m_fileName = fn;
+
+	m_start = true;
+
+	return true;
+}
+
+void RawReaderWorker::start_compute()
+{
+	m_start = true;
+}
+
+bool RawReaderWorker::is_made() const
+{
+	return m_made;
+}
+
+bool RawReaderWorker::is_work() const
+{
+	return !m_made;
+}
+
+RawReader &RawReaderWorker::reader()
+{
+	return m_reader;
+}
+
+void RawReaderWorker::work()
+{
+	m_made = false;
+
+	if(m_reader.empty()){
+		if(!open_image(m_fileName)){
+			if(!open_raw(m_fileName)){
+				m_made = true;
+				return;
+			}
+		}
+	}
+
+	m_time_counter.start();
+	int t1 = m_time_counter.elapsed();
+
+	m_reader.compute();
+
+	m_time_exec = m_time_counter.elapsed() - t1;
 
 	m_made = true;
+}
+
+
+bool RawReaderWorker::open_raw(const QString fileName)
+{
+	if(!fileName.contains(QRegExp("\.raw$|\.bin$", Qt::CaseInsensitive)))
+		return false;
+
+	QFile fl(fileName);
+
+	QByteArray data;
+
+	if(fl.open(QIODevice::ReadOnly)){
+		data = fl.readAll();
+		fl.close();
+
+		return m_reader.set_bayer_data(data);
+	}
+	return false;
+}
+
+bool RawReaderWorker::open_image(const QString fileName)
+{
+	if(!fileName.contains(QRegExp("\.jpeg$|\.jpg$|\.bmp$|\.png$", Qt::CaseInsensitive)))
+		return false;
+
+	QImage image;
+	image.load(fileName);
+
+	return m_reader.set_bayer_data(image);
+}
+
+
+int RawReaderWorker::time_exec() const
+{
+	return m_time_exec;
 }

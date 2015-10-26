@@ -41,7 +41,7 @@ private:
 	QTimer m_timer;
 	QString m_fileName;
 
-	RawReader* m_rawReader;
+	RawReaderWorker* m_rawReader;
 
 	void loadXml();
 	void saveXml();

@@ -57,7 +57,7 @@ struct Mat{
 		rows = cols = 0;
 		data.clear();
 	}
-	bool empty(){
+	bool empty() const{
 		return data.size() == 0;
 	}
 
@@ -81,26 +81,10 @@ public:
 	};
 	RawReader();
 	~RawReader();
-	/**
-	 * @brief start_read_file
-	 * открыть файл
-	 * @param fn
-	 * @return
-	 */
-	bool start_read_file(const QString& fn);
-	/**
-	 * @brief is_made
-	 * готово или нет
-	 * @return
-	 */
-	bool is_made() const;
-	/**
-	 * @brief is_work
-	 * в работе
-	 * @return
-	 */
-	bool is_work() const;
-
+	bool set_bayer_data(const QByteArray& data);
+	bool set_bayer_data(const QImage& image);
+	void clear_bayer();
+	bool empty() const;
 	/**
 	 * @brief set_shift
 	 * число бит для сдвига значения пикселя
@@ -115,16 +99,11 @@ public:
 	 * @param value
 	 */
 	void set_demoscaling(TYPE_DEMOSCALE value);
+	void compute();
 
 	int width() const;
 	int height() const;
 	const QImage &image() const;
-	/**
-	 * @brief time_exec
-	 * время выполнения
-	 * @return
-	 */
-	int time_exec() const;
 	/**
 	 * @brief shift
 	 * текщий сдвиг значения пикселя
@@ -132,16 +111,7 @@ public:
 	 */
 	int shift() const;
 
-protected:
-	virtual void run();
-
 private:
-	bool m_made;
-	QString m_fileName;
-	bool m_start;
-	bool m_done;
-	bool m_work;
-
 	Mat< ushort > m_bayer;
 	Mat< ushort > m_initial;
 	Mat< ushort > m_tmp;
@@ -151,8 +121,6 @@ private:
 	int m_width;
 	int m_height;
 	QImage m_image;
-	QTime m_time_counter;
-	int m_time_exec;
 
 	TYPE_DEMOSCALE m_demoscaling;
 	/**
@@ -160,11 +128,6 @@ private:
 	 * серое изображение
 	 */
 	void create_image();
-	/**
-	 * @brief work
-	 * открыть файл и преобразовать в изображения
-	 */
-	void work();
 	/**
 	 * @brief demoscaling
 	 * дебаеризация медленная (хз какой алгоритм)
@@ -180,10 +143,63 @@ private:
 	 */
 	void demoscaling_linear();
 
+	void left_shift();
+};
+
+//////////////////////////////////
+
+class RawReaderWorker: public QThread{
+public:
+	RawReaderWorker();
+	~RawReaderWorker();
+	/**
+	 * @brief start_read_file
+	 * открыть файл
+	 * @param fn
+	 * @return
+	 */
+	bool start_read_file(const QString& fn);
+	void start_compute();
+	/**
+	 * @brief is_made
+	 * готово или нет
+	 * @return
+	 */
+	bool is_made() const;
+	/**
+	 * @brief is_work
+	 * в работе
+	 * @return
+	 */
+	bool is_work() const;
+	/**
+	 * @brief time_exec
+	 * время выполнения
+	 * @return
+	 */
+	int time_exec() const;
+	RawReader& reader();
+
+protected:
+	virtual void run();
+
+private:
+	bool m_made;
+	QString m_fileName;
+	bool m_start;
+	bool m_done;
+	QTime m_time_counter;
+	int m_time_exec;
+
+	RawReader m_reader;
+
 	bool open_raw(const QString fileName);
 	bool open_image(const QString fileName);
-
-	void left_shift();
+	/**
+	 * @brief work
+	 * открыть файл и преобразовать в изображения
+	 */
+	void work();
 };
 
 #endif // RAWREADER_H
