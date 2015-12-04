@@ -26,7 +26,7 @@
      <x>0</x>
      <y>0</y>
      <width>1125</width>
-     <height>21</height>
+     <height>25</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -161,6 +161,38 @@
            <string>linear</string>
           </property>
          </item>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="groupBox">
+         <property name="title">
+          <string>RAW type</string>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_4">
+          <item>
+           <widget class="QRadioButton" name="rb_type1">
+            <property name="text">
+             <string>type 1 (width and 
+height in stream)</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QRadioButton" name="rb_type2">
+            <property name="text">
+             <string>type 2 (width and 
+height from fields)</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="pb_recompute">
+            <property name="text">
+             <string>recompute</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
         </widget>
        </item>
        <item>

@@ -79,6 +79,11 @@ public:
 		SIMPLE,
 		LINEAR
 	};
+	enum RAW_TYPE{
+		RAW_TYPE_1,			/// with width and height
+		RAW_TYPE_2			/// without width and height
+	};
+
 	RawReader();
 	~RawReader();
 	bool set_bayer_data(const QByteArray& data);
@@ -103,6 +108,7 @@ public:
 
 	int width() const;
 	int height() const;
+	void set_size(int w, int h);
 	const QImage &image() const;
 	/**
 	 * @brief shift
@@ -111,11 +117,15 @@ public:
 	 */
 	int shift() const;
 
+	void set_type(RAW_TYPE type);
+	RAW_TYPE type() const;
+
 private:
 	Mat< ushort > m_bayer;
 	Mat< ushort > m_initial;
 	Mat< ushort > m_tmp;
 
+	RAW_TYPE m_raw_type;
 	int m_lshift;
 	int m_shift;
 	int m_width;

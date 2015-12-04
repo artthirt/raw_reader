@@ -96,8 +96,8 @@ void ImageOutput::mouseReleaseEvent(QMouseEvent *e)
 void ImageOutput::mouseMoveEvent(QMouseEvent *e)
 {
 	if(m_mouse_down){
-		m_image_pos += (m_mouse_pt - e->posF()) / m_scale_arg;
-		m_mouse_pt = e->pos();
+		m_image_pos += (m_mouse_pt - e->windowPos()) / m_scale_arg;
+		m_mouse_pt = e->windowPos();
 
 		if(!m_image.isNull()){
 			if(m_image_pos.x() < 0)

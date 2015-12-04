@@ -36,8 +36,14 @@ bool RawReader::set_bayer_data(const QByteArray &data)
 	QDataStream stream(data);
 	stream.setByteOrder(QDataStream::LittleEndian);
 
-	stream >> m_width;
-	stream >> m_height;
+	switch (m_raw_type) {
+		case RAW_TYPE_1:
+			stream >> m_width;
+			stream >> m_height;
+			break;
+		default:
+			break;
+	}
 
 	if(!m_width || !m_height || qAbs(m_width) > 0xffffff || qAbs(m_height) > 0xffffff)
 		return false;
@@ -148,6 +154,12 @@ int RawReader::height() const
 	return m_height;
 }
 
+void RawReader::set_size(int w, int h)
+{
+	m_width = w;
+	m_height = h;
+}
+
 const QImage &RawReader::image() const
 {
 	return m_image;
@@ -156,6 +168,16 @@ const QImage &RawReader::image() const
 int RawReader::shift() const
 {
 	return m_shift;
+}
+
+void RawReader::set_type(RawReader::RAW_TYPE type)
+{
+	m_raw_type = type;
+}
+
+RawReader::RAW_TYPE RawReader::type() const
+{
+	return m_raw_type;
 }
 
 void RawReader::left_shift()

@@ -36,6 +36,14 @@ private slots:
 
 	void on_sb_lshift_valueChanged(int arg1);
 
+	void on_rb_type1_clicked(bool checked);
+
+	void on_rb_type2_clicked(bool checked);
+
+	void on_pb_recompute_clicked();
+
+	void on_sb_height_valueChanged(int arg1);
+
 private:
 	Ui::MainWindow *ui;
 	QTimer m_timer;
@@ -45,6 +53,8 @@ private:
 
 	void loadXml();
 	void saveXml();
+
+	void start_work();
 
 	void open_file(const QString& fileName);
 };

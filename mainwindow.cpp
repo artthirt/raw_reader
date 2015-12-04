@@ -61,14 +61,13 @@ void MainWindow::on_sb_width_valueChanged(const QString &arg1)
 
 void MainWindow::on_sb_width_valueChanged(int arg1)
 {
+	m_rawReader->reader().set_size(arg1, ui->sb_height->value());
 }
 
 void MainWindow::on_spinBox_valueChanged(int arg1)
 {
 	m_rawReader->reader().set_shift(arg1);
-	m_rawReader->start_compute();
-	m_timer.start();
-	ui->lb_work->setVisible(true);
+	start_work();
 }
 
 void MainWindow::on_timeout()
@@ -105,12 +104,19 @@ void MainWindow::on_cb_demoscale_currentIndexChanged(int index)
 		default:
 			break;
 	}
-	m_rawReader->start_compute();
-	m_timer.start();
-	ui->lb_work->setVisible(true);
+	start_work();
 }
 
 const QString xml_config("config.xml");
+
+QString get_from_xml(QDomDocument& dom, const QString& name)
+{
+	QDomNodeList list = dom.elementsByTagName(name);
+	if(list.size()){
+		return list.item(0).firstChild().toText().data();
+	}
+	return "";
+}
 
 void MainWindow::loadXml()
 {
@@ -127,10 +133,31 @@ void MainWindow::loadXml()
 	QByteArray data = file.readAll();
 	dom.setContent(data);
 
-	QDomNodeList list = dom.elementsByTagName("filename");
-	if(list.size()){
-		open_file(list.item(0).firstChild().toText().data());
-	}
+	QString value = get_from_xml(dom, "filename");
+	if(!value.isNull())
+		open_file(value);
+	ui->sb_width->setValue(get_from_xml(dom, "width").toInt());
+	ui->sb_height->setValue(get_from_xml(dom, "height").toInt());
+
+	int val = get_from_xml(dom, "type").toInt();
+	if(val == 1)
+		ui->rb_type1->setChecked(true);
+	else
+		ui->rb_type2->setChecked(true);
+}
+
+void create_text_node(QDomDocument& dom, QDomNode& tree, const QString& name, const QString& value)
+{
+	QDomNode node = dom.createElement(name);
+	tree.appendChild(node);
+
+	QDomText text = dom.createTextNode(value);
+	node.appendChild(text);
+}
+
+void create_text_node(QDomDocument& dom, QDomNode& tree, const QString& name, int value)
+{
+	create_text_node(dom, tree, name, QString::number(value));
 }
 
 void MainWindow::saveXml()
@@ -143,11 +170,10 @@ void MainWindow::saveXml()
 	QDomNode tree = dom.createElement("tree");
 	dom.appendChild(tree);
 
-	QDomNode node = dom.createElement("filename");
-	tree.appendChild(node);
-
-	QDomText text = dom.createTextNode(m_fileName);
-	node.appendChild(text);
+	create_text_node(dom, tree, "filename", m_fileName);
+	create_text_node(dom, tree, "width", ui->sb_width->value());
+	create_text_node(dom, tree, "height", ui->sb_height->value());
+	create_text_node(dom, tree, "type", ui->rb_type1->isChecked()? "1" : "2");
 
 	QByteArray data = dom.toByteArray();
 	QFile file(xml_config);
@@ -155,6 +181,13 @@ void MainWindow::saveXml()
 		file.write(data);
 		file.close();
 	}
+}
+
+void MainWindow::start_work()
+{
+	m_rawReader->start_compute();
+	m_timer.start();
+	ui->lb_work->setVisible(true);
 }
 
 void MainWindow::open_file(const QString &fileName)
@@ -173,8 +206,32 @@ void MainWindow::on_sb_lshift_valueChanged(int arg1)
 {
 	if(m_rawReader){
 		m_rawReader->reader().set_lshift(arg1);
-		m_rawReader->start_compute();
-		m_timer.start();
-		ui->lb_work->setVisible(true);
+		start_work();
 	}
+}
+
+void MainWindow::on_rb_type1_clicked(bool checked)
+{
+	if(checked){
+		m_rawReader->reader().set_type(RawReader::RAW_TYPE_1);
+		start_work();
+	}
+}
+
+void MainWindow::on_rb_type2_clicked(bool checked)
+{
+	if(checked){
+		m_rawReader->reader().set_type(RawReader::RAW_TYPE_2);
+		start_work();
+	}
+}
+
+void MainWindow::on_pb_recompute_clicked()
+{
+	start_work();
+}
+
+void MainWindow::on_sb_height_valueChanged(int arg1)
+{
+	m_rawReader->reader().set_size(ui->sb_width->value(), arg1);
 }
