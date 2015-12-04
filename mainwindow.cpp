@@ -28,11 +28,18 @@ MainWindow::MainWindow(QWidget *parent) :
 	m_rawReader = new RawReaderWorker;
 	m_rawReader->start();
 
+	connect(&m_rawReader->reader(), SIGNAL(log_message(RawReader::STATE_TYPE,QString)),
+			this, SLOT(onLogMessage(RawReader::STATE_TYPE,QString)), Qt::QueuedConnection);
+
 	ui->spinBox->setValue(m_rawReader->reader().shift());
 	ui->sb_lshift->setValue(m_rawReader->reader().lshift());
 
 	connect(&m_timer, SIGNAL(timeout()), this, SLOT(on_timeout()));
 	m_timer.setInterval(300);
+
+	m_statusLabel = new QLabel(this);
+	m_statusLabel->setMinimumWidth(200);
+	ui->statusBar->addWidget(m_statusLabel);
 
 	loadXml();
 }
@@ -234,4 +241,22 @@ void MainWindow::on_pb_recompute_clicked()
 void MainWindow::on_sb_height_valueChanged(int arg1)
 {
 	m_rawReader->reader().set_size(ui->sb_width->value(), arg1);
+}
+
+void MainWindow::onLogMessage(RawReader::STATE_TYPE type, const QString &text)
+{
+	m_statusLabel->setText(text);
+	switch (type) {
+		case RawReader::OK:
+			m_statusLabel->setStyleSheet("background: #67ea3a;");
+			break;
+		case RawReader::WARNING:
+			m_statusLabel->setStyleSheet("background: #f9a451;");
+			break;
+		case RawReader::ERROR:
+			m_statusLabel->setStyleSheet("background: #e12500;");
+			break;
+		default:
+			break;
+	}
 }

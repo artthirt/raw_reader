@@ -4,7 +4,17 @@
 #include <QRegExp>
 
 /////////////////////////////////
+/// \brief for set alpha in uint
+#define MASK_ALPHAMAX_UCHAR		(0xff000000)
+/// \brief for crpp color value
+#define MAX_UCHAR				(255)
 
+/////////////////////////////////
+/// \brief minFast
+/// get min value with logic operations
+/// \param a
+/// \param b
+/// \return
 inline int minFast(int a, int b)
 {
 	int z = a - b;
@@ -12,6 +22,9 @@ inline int minFast(int a, int b)
 	return a - i * z;
 }
 
+/////////////////////////////////
+
+const int reg_raw_type = qRegisterMetaType<RawReader::STATE_TYPE>("RawReader::STATE_TYPE");
 
 /////////////////////////////////
 
@@ -20,6 +33,7 @@ RawReader::RawReader()
 	, m_height(0)
 	, m_shift(4)
 	, m_lshift(0)
+	, m_raw_type(RAW_TYPE_NONE)
 	, m_demoscaling(GRAY)
 {
 }
@@ -37,6 +51,7 @@ bool RawReader::set_bayer_data(const QByteArray &data)
 	stream.setByteOrder(QDataStream::LittleEndian);
 
 	switch (m_raw_type) {
+		case RAW_TYPE_NONE:
 		case RAW_TYPE_1:
 			stream >> m_width;
 			stream >> m_height;
@@ -156,8 +171,12 @@ int RawReader::height() const
 
 void RawReader::set_size(int w, int h)
 {
-	m_width = w;
-	m_height = h;
+	if(m_raw_type == RAW_TYPE_2){
+		m_width = w;
+		m_height = h;
+	}else{
+		emit log_message(WARNING, "size not set. different type");
+	}
 }
 
 const QImage &RawReader::image() const
@@ -207,6 +226,7 @@ void RawReader::demoscaling()
 			sl[j] = qRgb(red, green, blue);
 		}
 	}
+	emit log_message(OK, "end slow demoscaling");
 }
 
 int RawReader::getblue(int i, int j)
@@ -247,7 +267,7 @@ int RawReader::getblue(int i, int j)
 		default:
 			break;
 	}
-	return minFast(255, val >> m_shift);
+	return minFast(MAX_UCHAR, val >> m_shift);
 }
 
 int RawReader::getred(int i, int j)
@@ -287,7 +307,7 @@ int RawReader::getred(int i, int j)
 			}
 			break;
 	}
-	return minFast(255, val >> m_shift);
+	return minFast(MAX_UCHAR, val >> m_shift);
 }
 
 int RawReader::getgreen(int i, int j)
@@ -336,7 +356,7 @@ int RawReader::getgreen(int i, int j)
 			}
 			break;
 	}
-	return minFast(255, val >> m_shift);
+	return minFast(MAX_UCHAR, val >> m_shift);
 }
 
 void RawReader::demoscaling_linear()
@@ -364,15 +384,15 @@ void RawReader::demoscaling_linear()
 			g01 = (dm1[j + 1] + d0[j] + d0[j + 2] + dp1[j + 1]) >> 2;
 			g10 = (d0[j] + dp1[j - 1] + dp1[j + 1] + dp2[j]) >> 2;
 
-			g00 = minFast(g00 >> m_shift, 255);
-			g01 = minFast(g01 >> m_shift, 255);
-			g10 = minFast(g10 >> m_shift, 255);
-			g11 = minFast(g11 >> m_shift, 255);
+			g00 = minFast(g00 >> m_shift, MAX_UCHAR);
+			g01 = minFast(g01 >> m_shift, MAX_UCHAR);
+			g10 = minFast(g10 >> m_shift, MAX_UCHAR);
+			g11 = minFast(g11 >> m_shift, MAX_UCHAR);
 
-			sl0[j]		= (g00 << 8) | 0xff000000;
-			sl0[j + 1]	= (g01 << 8) | 0xff000000;
-			sl1[j]		= (g10 << 8) | 0xff000000;
-			sl1[j + 1]	= (g11 << 8) | 0xff000000;
+			sl0[j]		= (g00 << 8) | MASK_ALPHAMAX_UCHAR;
+			sl0[j + 1]	= (g01 << 8) | MASK_ALPHAMAX_UCHAR;
+			sl1[j]		= (g10 << 8) | MASK_ALPHAMAX_UCHAR;
+			sl1[j + 1]	= (g11 << 8) | MASK_ALPHAMAX_UCHAR;
 		}
 	}
 
@@ -392,18 +412,18 @@ void RawReader::demoscaling_linear()
 			/// green
 			g00 = (d0[j-1] + d0[j + 1] + dp1[j])/ 3;
 			g01 = (d0[j + 1] + dp1[j] + dp1[j + 2]) / 3;
-			g00 = minFast(g00 >> m_shift, 255);	g01 = minFast(g01 >> m_shift, 255);
+			g00 = minFast(g00 >> m_shift, MAX_UCHAR);	g01 = minFast(g01 >> m_shift, MAX_UCHAR);
 			/// red
 			r00 = d0[j];
 			r01 = (d0[j] + d0[j + 2]) >> 1;
-			r00 = minFast(r00 >> m_shift, 255);	r01 = minFast(r01 >> m_shift, 255);
+			r00 = minFast(r00 >> m_shift, MAX_UCHAR);	r01 = minFast(r01 >> m_shift, MAX_UCHAR);
 			/// blue
 			b00 = (dp1[j - 1] + dp1[j + 1]) >> 1;
 			b01 = dp1[j + 1];
-			b00 = minFast(b00 >> m_shift, 255);	b01 = minFast(b01 >> m_shift, 255);
+			b00 = minFast(b00 >> m_shift, MAX_UCHAR);	b01 = minFast(b01 >> m_shift, MAX_UCHAR);
 
-			sl0[j]		= (b00) | (g00 << 8) | (r00 << 16) | 0xff000000;
-			sl0[j + 1]	= (b01) | (g01 << 8) | (r01 << 16) | 0xff000000;
+			sl0[j]		= (b00) | (g00 << 8) | (r00 << 16) | MASK_ALPHAMAX_UCHAR;
+			sl0[j + 1]	= (b01) | (g01 << 8) | (r01 << 16) | MASK_ALPHAMAX_UCHAR;
 
 			//////////////////////////////////
 			r10 = (d0[j] + dp2[j]) >> 1;
@@ -412,8 +432,8 @@ void RawReader::demoscaling_linear()
 			b10 = (dp1[j - 1] + dp1[j + 1]) >> 1;
 			b11 = dp1[j + 1];
 
-			r10 = minFast(r10 >> m_shift, 255);	r11 = minFast(r11 >> m_shift, 255);
-			b10 = minFast(b10 >> m_shift, 255);	b11 = minFast(b11 >> m_shift, 255);
+			r10 = minFast(r10 >> m_shift, MAX_UCHAR);	r11 = minFast(r11 >> m_shift, MAX_UCHAR);
+			b10 = minFast(b10 >> m_shift, MAX_UCHAR);	b11 = minFast(b11 >> m_shift, MAX_UCHAR);
 
 			sl1[j] |= (b10) | (r10 << 16);
 			sl1[j + 1] |= (b11) | (r11 << 16);
@@ -421,10 +441,10 @@ void RawReader::demoscaling_linear()
 
 			g00 = (du0[j-1] + du0[j + 1] + dup1[j])/3;
 			g01 = (du0[j] + dup1[j - 1] + dup1[j + 1])/ 3;
-			g00 = minFast(g00 >> m_shift, 255);	g01 = minFast(g01 >> m_shift, 255);
+			g00 = minFast(g00 >> m_shift, MAX_UCHAR);	g01 = minFast(g01 >> m_shift, MAX_UCHAR);
 
-			slu0[j]		= (g00 << 8) | 0xff000000;
-			slu0[j + 1]	= (g01 << 8) | 0xff000000;
+			slu0[j]		= (g00 << 8) | MASK_ALPHAMAX_UCHAR;
+			slu0[j + 1]	= (g01 << 8) | MASK_ALPHAMAX_UCHAR;
 		}
 	}
 
@@ -454,23 +474,25 @@ void RawReader::demoscaling_linear()
 			int red = 0, blue = 0;
 
 			red = d0[j];
-			red = minFast(255, red >> m_shift);
+			red = minFast(MAX_UCHAR, red >> m_shift);
 
 			blue = (dm1[j] + dp1[j]) >> 1;
-			blue = minFast(255, blue >> m_shift);
+			blue = minFast(MAX_UCHAR, blue >> m_shift);
 
 			sl0[j] |= (red << 16) | (blue);
 
 			red = (d0[j] + dp2[j]) >> 1;
-			red = minFast(255, red >> m_shift);
+			red = minFast(MAX_UCHAR, red >> m_shift);
 
 			blue = dp1[j];
-			blue = minFast(255, blue >> m_shift);
+			blue = minFast(MAX_UCHAR, blue >> m_shift);
 
 			sl1[j] |= (red << 16) | (blue);
 		}
 	}
 #endif
+
+	emit log_message(OK, "end linear demoscaling");
 }
 
 void RawReader::create_image()
@@ -485,7 +507,7 @@ void RawReader::create_image()
 		for(int j = 0; j < m_width; j++){
 			ushort val = m_bayer.at(i, j);
 			val >>= m_shift;
-			val = minFast(val, 255);
+			val = minFast(val, MAX_UCHAR);
 			sl[j] = qRgb(val, val, val);
 		}
 	}
@@ -608,6 +630,8 @@ bool RawReaderWorker::open_image(const QString fileName)
 
 	QImage image;
 	image.load(fileName);
+
+	m_reader.set_type(RawReader::RAW_TYPE_NONE);
 
 	return m_reader.set_bayer_data(image);
 }

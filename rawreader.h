@@ -74,20 +74,43 @@ class RawReader: public QThread
 {
 	Q_OBJECT
 public:
+	enum STATE_TYPE{
+		OK = 0,
+		WARNING,
+		ERROR
+	};
+
 	enum TYPE_DEMOSCALE{
 		GRAY,
 		SIMPLE,
 		LINEAR
 	};
 	enum RAW_TYPE{
-		RAW_TYPE_1,			/// with width and height
-		RAW_TYPE_2			/// without width and height
+		RAW_TYPE_NONE,		/// for loaded image
+		RAW_TYPE_1,			/// stream with width and height
+		RAW_TYPE_2			/// stream without width and height
 	};
 
 	RawReader();
 	~RawReader();
+	/**
+	 * @brief set_bayer_data
+	 * create bayer matrix from stream
+	 * @param data
+	 * @return
+	 */
 	bool set_bayer_data(const QByteArray& data);
+	/**
+	 * @brief set_bayer_data
+	 * create bayer matrix from image
+	 * @param image
+	 * @return
+	 */
 	bool set_bayer_data(const QImage& image);
+	/**
+	 * @brief clear_bayer
+	 * clear bayer matrix
+	 */
 	void clear_bayer();
 	bool empty() const;
 	/**
@@ -119,6 +142,9 @@ public:
 
 	void set_type(RAW_TYPE type);
 	RAW_TYPE type() const;
+
+signals:
+	void log_message(RawReader::STATE_TYPE, const QString& text);
 
 private:
 	Mat< ushort > m_bayer;

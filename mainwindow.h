@@ -7,6 +7,8 @@
 
 #include "rawreader.h"
 
+class QLabel;
+
 namespace Ui {
 class MainWindow;
 }
@@ -44,10 +46,14 @@ private slots:
 
 	void on_sb_height_valueChanged(int arg1);
 
+	void onLogMessage(RawReader::STATE_TYPE type, const QString& text);
+
 private:
 	Ui::MainWindow *ui;
 	QTimer m_timer;
 	QString m_fileName;
+
+	QLabel* m_statusLabel;
 
 	RawReaderWorker* m_rawReader;
 
